@@ -89,30 +89,49 @@ public class SampleBehaviour1 : MonoBehaviour
     [Password]
     public string password;
 
-    [Label("Validation", skinStyle: SkinStyle.Box)]
-
-    [Help("NotNullAttribute, ClampAttribute, SceneObjectOnlyAttribute, ChildObjectOnlyAttribute, PrefabObjectOnlyAttribute " +
-        "are part of group that will be re-implemented in future as ToolboxValidationAttributes. " +
-        "Unfortunately, for now, you can't use them together with any other PropertyDrawer.", UnityMessageType.Warning)]
-    [NotNull]
-    public Transform var13;
-
-    [Clamp(0.0f, 11.2f)]
-    public double clampedValue;
-
-    [SceneObjectOnly]
-    public GameObject sceneReference;
-    [ChildObjectOnly]
-    public GameObject childReference;
-    [PrefabObjectOnly]
-    public GameObject prefabReference;
-    [NotPrefabObjectOnly(AllowInstancedPrefabs = false)]
-    public GameObject notPrefabReference;
-
     [Label("Formatted Number", skinStyle: SkinStyle.Box)]
 
     [FormattedNumber]
     public int bigNumber;
     [FormattedNumber("c")]
     public float currency;
+
+    [Label("Layer", skinStyle: SkinStyle.Box)]
+
+    [Layer]
+    public int layer;
+
+    [Label("Animation Curve Settings", skinStyle: SkinStyle.Box)]
+
+    [AnimationCurveSettings]
+    public AnimationCurve animationCurve1;
+    [AnimationCurveSettings(-1.0f, -1.0f, 2.0f, 2.0f, HexColor = "#360E45")]
+    public AnimationCurve animationCurve2;
+
+    [BeginGroup(Order = -2)]
+
+    [Help("NotNullAttribute, ClampAttribute, SceneObjectOnlyAttribute, ChildObjectOnlyAttribute, PrefabObjectOnlyAttribute " +
+        "are part of group that will be re-implemented in future as ToolboxValidationAttributes. " +
+        "Unfortunately, for now, you can't use them together with any other PropertyDrawer.", UnityMessageType.Warning, Order = -1)]
+
+    [Label("Validation", skinStyle: SkinStyle.Box)]
+
+    [Clamp(0.0f, 11.2f)]
+    public double clampedValue;
+
+    [NotNull]
+    public GameObject notNullReference;
+
+    [ChildObjectOnly]
+    public GameObject childReference;
+
+    [SceneObjectOnly]
+    public GameObject sceneReference;
+
+    [PrefabObjectOnly]
+    public GameObject prefabReference;
+
+    [EndGroup]
+    [NotPrefabObjectOnly(AllowInstancedPrefabs = false)]
+    public GameObject notPrefabReference;
 }

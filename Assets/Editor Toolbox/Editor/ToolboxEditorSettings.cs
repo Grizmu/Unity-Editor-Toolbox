@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -62,9 +61,9 @@ namespace Toolbox.Editor
     [CreateAssetMenu(fileName = "Editor Toolbox Settings", menuName = "Editor Toolbox/Settings")]
     internal class ToolboxEditorSettings : ScriptableObject, IToolboxGeneralSettings, IToolboxHierarchySettings, IToolboxProjectSettings, IToolboxInspectorSettings, IToolboxSceneViewSettings
     {
-        [SerializeField]
+        [SerializeField, Tooltip("Set to false if you don't want to use Toolbox Hierarchy and related features.")]
         private bool useToolboxHierarchy = true;
-        [SerializeField]
+        [SerializeField, Tooltip("Set to true if you want to display horizontal lines in the Hierarchy Window.")]
         private bool drawHorizontalLines = true;
         [SerializeField]
         private bool showSelectionsCount;
@@ -73,7 +72,7 @@ namespace Toolbox.Editor
         [FormerlySerializedAs("rowDataItems")]
         private List<HierarchyItemDataType> rowDataTypes = Defaults.rowDataTypes;
 
-        [SerializeField]
+        [SerializeField, Tooltip("Set to false if you don't want to use Toolbox Folders and related features.")]
         private bool useToolboxFolders = true;
 
         [SerializeField, Clamp(0.0f, float.MaxValue)]
@@ -95,7 +94,7 @@ namespace Toolbox.Editor
         [SerializeField]
         private KeyCode selectorKey = KeyCode.Tab;
 
-        [SerializeField, Tooltip("Set to false if you don't want to use Toolbox attributes and related features.")]
+        [SerializeField, Tooltip("Set to false if you don't want to use Toolbox Attributes and related features.")]
         private bool useToolboxDrawers = true;
         [SerializeField, Tooltip("By default, Inspectors will use the built-in version of the list instead of the Toolbox-based one. " +
             "Keep in mind that built-in properties don't support Toolbox attributes. \n\n Changing this property will recompile the code.")]
@@ -117,6 +116,7 @@ namespace Toolbox.Editor
         private bool projectSettingsDirty;
         private bool inspectorSettingsDirty;
         private bool sceneViewSettingsDirty;
+        private int lastValidationFrame;
 
         internal event Action<IToolboxHierarchySettings> OnHierarchySettingsChanged;
         internal event Action<IToolboxProjectSettings> OnProjectSettingsChanged;
@@ -179,12 +179,24 @@ namespace Toolbox.Editor
 
         internal void Validate()
         {
+            Validate(false);
+        }
+
+        internal void Validate(bool force)
+        {
+            //NOTE: additional check to prevent multiple validations in the same frame, e.g. typical case:
+            // - after recompilation we are initializing toolbox and we want to validate settings, in the same time Unity validates all SOs
+            if (lastValidationFrame == Time.frameCount && !force)
+            {
+                return;
+            }
+
             ValidateHierarchySettings();
             ValidateProjectSettings();
             ValidateInspectorSettings();
             ValidateSceneViewSettings();
+            lastValidationFrame = Time.frameCount;
         }
-
 
         /// <summary>
         /// Called internally by the Editor after any value change or the Undo/Redo operation.
@@ -192,7 +204,7 @@ namespace Toolbox.Editor
         private void OnValidate()
         {
             //determine if any section was changed within the Editor
-            var settingsDirty = hierarchySettingsDirty || projectSettingsDirty || inspectorSettingsDirty;
+            var settingsDirty = hierarchySettingsDirty || projectSettingsDirty || inspectorSettingsDirty || sceneViewSettingsDirty;
             if (settingsDirty)
             {
                 //check exactly what settings are changed and apply them
@@ -229,6 +241,7 @@ namespace Toolbox.Editor
             hierarchySettingsDirty = false;
             projectSettingsDirty = false;
             inspectorSettingsDirty = false;
+            sceneViewSettingsDirty = false;
         }
 
         #endregion
@@ -275,7 +288,7 @@ namespace Toolbox.Editor
         public void SetAllPossibleDecoratorDrawers()
         {
             decoratorDrawerHandlers.Clear();
-            var types = ToolboxDrawerModule.GetAllPossibleDecoratorDrawers();
+            var types = ToolboxDrawersManager.GetAllPossibleDecoratorDrawers();
             for (var i = 0; i < types.Count; i++)
             {
                 decoratorDrawerHandlers.Add(new SerializedType(types[i]));
@@ -285,7 +298,7 @@ namespace Toolbox.Editor
         public void SetAllPossibleConditionDrawers()
         {
             conditionDrawerHandlers.Clear();
-            var types = ToolboxDrawerModule.GetAllPossibleConditionDrawers();
+            var types = ToolboxDrawersManager.GetAllPossibleConditionDrawers();
             for (var i = 0; i < types.Count; i++)
             {
                 conditionDrawerHandlers.Add(new SerializedType(types[i]));
@@ -295,7 +308,7 @@ namespace Toolbox.Editor
         public void SetAllPossibleSelfPropertyDrawers()
         {
             selfPropertyDrawerHandlers.Clear();
-            var types = ToolboxDrawerModule.GetAllPossibleSelfPropertyDrawers();
+            var types = ToolboxDrawersManager.GetAllPossibleSelfPropertyDrawers();
             for (var i = 0; i < types.Count; i++)
             {
                 selfPropertyDrawerHandlers.Add(new SerializedType(types[i]));
@@ -305,7 +318,7 @@ namespace Toolbox.Editor
         public void SetAllPossibleListPropertyDrawers()
         {
             listPropertyDrawerHandlers.Clear();
-            var types = ToolboxDrawerModule.GetAllPossibleListPropertyDrawers();
+            var types = ToolboxDrawersManager.GetAllPossibleListPropertyDrawers();
             for (var i = 0; i < types.Count; i++)
             {
                 listPropertyDrawerHandlers.Add(new SerializedType(types[i]));
@@ -315,7 +328,7 @@ namespace Toolbox.Editor
         public void SetAllPossibleTargetTypeDrawers()
         {
             targetTypeDrawerHandlers.Clear();
-            var types = ToolboxDrawerModule.GetAllPossibleTargetTypeDrawers();
+            var types = ToolboxDrawersManager.GetAllPossibleTargetTypeDrawers();
             for (var i = 0; i < types.Count; i++)
             {
                 targetTypeDrawerHandlers.Add(new SerializedType(types[i]));
@@ -332,7 +345,6 @@ namespace Toolbox.Editor
             smallIconPadding = new Vector2(Defaults.smallFolderIconXPaddingDefault,
                 Defaults.smallFolderIconYPaddingDefault);
         }
-
 
         public bool UseToolboxHierarchy
         {
@@ -458,13 +470,14 @@ namespace Toolbox.Editor
             internal const float smallFolderIconXPaddingDefault = 0.15f;
             internal const float smallFolderIconYPaddingDefault = 0.15f;
 
-            internal readonly static List<HierarchyItemDataType> rowDataTypes = new List<HierarchyItemDataType>()
+            internal static readonly List<HierarchyItemDataType> rowDataTypes = new List<HierarchyItemDataType>()
             {
                 HierarchyItemDataType.Icon,
                 HierarchyItemDataType.Toggle,
                 HierarchyItemDataType.Tag,
                 HierarchyItemDataType.Layer,
-                HierarchyItemDataType.Script
+                HierarchyItemDataType.Script,
+                HierarchyItemDataType.TreeLines
             };
         }
     }

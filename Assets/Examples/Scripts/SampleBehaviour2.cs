@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 [ExecuteAlways]
 [AddComponentMenu("Editor Toolbox/Cheat Sheet 2 (Toolbox Property)")]
@@ -21,40 +22,25 @@ public class SampleBehaviour2 : MonoBehaviour
 
     public int GetValue()
     {
-        return ints.Length * Random.Range(1, 5);
+        return ints.Length * UnityEngine.Random.Range(1, 5);
     }
 
     [Label("InLine Editor", skinStyle: SkinStyle.Box)]
 
     [InLineEditor(DisableEditor = false)]
-    public Transform var21;
+    public Component component;
 
     [InLineEditor(drawSettings: true)]
-    public Material var22;
+    public Material material;
 
     [InLineEditor(true, true)]
-    public Texture var23;
+    public Texture texture;
 
     [InLineEditor(drawSettings: true)]
-    public AudioClip var24;
+    public AudioClip audioClip;
 
     [InLineEditor(HideScript = true)]
-    public Mesh var25;
-
-    [Label("Nested Properties", skinStyle: SkinStyle.Box)]
-
-    [Help("You can use Toolbox Properties inside serializable types without limitations.")]
-    public SampleNestedClass var27;
-
-    [System.Serializable]
-    public class SampleNestedClass
-    {
-        [Tooltip("Set to 1")]
-        public int i = 0;
-        [DisableIf(nameof(i), 1), ReorderableList, TagSelector]
-        [Help("Nested Information.", ApplyCondition = true)]
-        public string[] strings;
-    }
+    public Mesh mesh;
 
     [Label("Scrollable Items", skinStyle: SkinStyle.Box)]
 
@@ -63,15 +49,31 @@ public class SampleBehaviour2 : MonoBehaviour
 
     [Label("Ignore Parent", skinStyle: SkinStyle.Box)]
 
+    public Quaternion quaternion;
     [IgnoreParent]
-    public Quaternion q;
+    public Quaternion q2;
 
     [Label("Dynamic Range & MinMax Slider", skinStyle: SkinStyle.Box)]
 
-    public float a1 = -1;
-    public float b1 = 5.5f;
-    [DynamicRange(nameof(a1), nameof(b1))]
-    public float var40;
-    [DynamicMinMaxSlider(nameof(a1), nameof(b1))]
-    public Vector2 var41;
+    public float min = -1;
+    public float max = 5.5f;
+    [DynamicRange(nameof(min), nameof(max))]
+    public float dynamicRange;
+    [DynamicMinMaxSlider(nameof(min), nameof(max))]
+    public Vector2 dynamicMinMax;
+
+    [Label("Nested Objects", skinStyle: SkinStyle.Box)]
+
+    [Help("You can use Toolbox Attributes inside serializable types without limitations.")]
+    public SampleNestedClass nestedObject;
+
+    [Serializable]
+    public class SampleNestedClass
+    {
+        [Tooltip("Set to 1")]
+        public int i = 0;
+        [DisableIf(nameof(i), 1), ReorderableList, TagSelector]
+        [Help("Nested Information.", ApplyCondition = true)]
+        public string[] strings;
+    }
 }

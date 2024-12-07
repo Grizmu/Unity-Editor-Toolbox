@@ -1,5 +1,4 @@
 ﻿using System;
-
 using UnityEditor;
 
 namespace Toolbox.Editor
@@ -19,7 +18,6 @@ namespace Toolbox.Editor
         {
             return string.Format("{0}{3}{1}{3}{2}", "Toolbox", causer, propertyName, ".");
         }
-
 
         public static void DeleteAll()
         {

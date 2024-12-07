@@ -9,8 +9,13 @@ using Object = UnityEngine.Object;
 
 namespace Toolbox.Editor
 {
-    public static partial class PropertyUtility
+    public static class PropertyUtility
     {
+        internal static class Defaults
+        {
+            internal static readonly string scriptPropertyName = "m_Script";
+        }
+
         //NOTE: last non-reflection implementation was ok but support for [SerializeReference] makes it a bit slow
         // unfortunately UnityEditor.ScriptAttributeUtility.GetFieldInfoFromProperty is internal so we have to retrive it using reflection
         private static readonly MethodInfo getGetFieldInfoFromPropertyMethod =
@@ -95,6 +100,11 @@ namespace Toolbox.Editor
                 {
                     var treeField = members[i];
                     reference = GetTreePathReference(treeField, reference);
+                    if (reference == null)
+                    {
+                        continue;
+                    }
+
                     if (ignoreArrays && IsSerializableArrayType(reference))
                     {
                         continue;
@@ -105,6 +115,27 @@ namespace Toolbox.Editor
             }
 
             return validReference;
+        }
+
+        public static object[] GetDeclaringObjects(this SerializedProperty property)
+        {
+            var targetObjects = property.serializedObject.targetObjects;
+            var parentObjects = new object[targetObjects.Length];
+            GetDeclaringObjectsNonAlloc(property, parentObjects);
+            return parentObjects;
+        }
+
+        public static int GetDeclaringObjectsNonAlloc(this SerializedProperty property, object[] result)
+        {
+            var targetObjects = property.serializedObject.targetObjects;
+            var targetObjectsCount = targetObjects.Length;
+            for (var i = 0; i < targetObjectsCount; i++)
+            {
+                var targetObject = targetObjects[i];
+                result[i] = property.GetDeclaringObject(targetObject);
+            }
+
+            return targetObjectsCount;
         }
 
         public static object GetTreePathReference(string treeField, object treeParent)
@@ -119,8 +150,22 @@ namespace Toolbox.Editor
                 ToolboxEditorLog.LogError("Cannot parse array element properly.");
             }
 
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+
             var fieldType = treeParent.GetType();
-            var fieldInfo = fieldType.GetField(treeField, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            FieldInfo fieldInfo = null;
+            //NOTE: make sure to check in the base classes since there can be a private field/property
+            while (fieldType != null)
+            {
+                fieldInfo = fieldType.GetField(treeField, flags);
+                if (fieldInfo != null)
+                {
+                    break;
+                }
+
+                fieldType = fieldType.BaseType;
+            }
+
             if (fieldInfo == null)
             {
                 ToolboxEditorLog.LogError($"Cannot find field: '{treeField}'.");
@@ -321,7 +366,7 @@ namespace Toolbox.Editor
                         var parent = property.GetParent();
                         if (parent != null && parent.propertyType == SerializedPropertyType.ManagedReference)
                         {
-                            TypeUtilities.TryGetTypeFromManagedReferenceFullTypeName(parent.managedReferenceFullTypename, out var parentType);
+                            TypeUtility.TryGetTypeFromManagedReferenceFullTypeName(parent.managedReferenceFullTypename, out var parentType);
                             foundField = parentType.GetField(member, fieldFlags);
                         }
                     }
@@ -421,15 +466,6 @@ namespace Toolbox.Editor
             }
         }
 
-
-        internal static class Defaults
-        {
-            internal static readonly string scriptPropertyName = "m_Script";
-        }
-    }
-
-    public static partial class PropertyUtility
-    {
         public static SerializedProperty GetSibling(this SerializedProperty property, string propertyPath)
         {
             var propertyParent = property.GetParent();
@@ -472,7 +508,6 @@ namespace Toolbox.Editor
             return array.FindPropertyRelative("Array.size");
         }
 
-
         public static T GetAttribute<T>(SerializedProperty property) where T : Attribute
         {
             return GetAttribute<T>(property, GetFieldInfo(property, out _));
@@ -492,7 +527,6 @@ namespace Toolbox.Editor
         {
             return (T[])fieldInfo.GetCustomAttributes(typeof(T), true);
         }
-
 
         internal static void EnsureReflectionSafeness(SerializedProperty property)
         {
